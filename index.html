@@ -38,6 +38,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--fh);min-height:100
 #btn-analyse{background:#001218;color:#06b6d4;border-color:#0891b2;}
 #btn-epargne{background:#1a0f00;color:#f97316;border-color:#c2410c;}
 #btn-notes{background:#1a001a;color:#f472b6;border-color:#be185d;}
+#btn-clients{background:#0a1a0a;color:#10b981;border-color:#059669;}
+#btn-clients.active{box-shadow:0 0 20px rgba(16,185,129,0.7),0 0 40px rgba(16,185,129,0.3);border-color:#10b981;filter:brightness(1.3);}
 #btn-dette{background:#1a0505;color:#ef4444;border-color:#dc2626;}
 #btn-dette.active{box-shadow:0 0 20px rgba(239,68,68,0.7),0 0 40px rgba(239,68,68,0.3);border-color:#ef4444;filter:brightness(1.3);}
 #btn-dashboard.active{box-shadow:0 0 20px rgba(124,58,237,0.7),0 0 40px rgba(124,58,237,0.3);border-color:#a78bfa;filter:brightness(1.3);}
@@ -161,8 +163,9 @@ tr:hover td{background:rgba(255,255,255,0.02);}
   <button class="nav-btn" id="btn-analyse" onclick="goTab('analyse')">📊 Analyse</button>
   <button class="nav-btn" id="btn-epargne" onclick="goTab('epargne')">📈 Objectifs</button>
   <button class="nav-btn" id="btn-notes" onclick="goTab('notes')">📝 Notes</button>
+  <button class="nav-btn" id="btn-clients" onclick="goTab('clients')">👥 Clients</button>
   <button class="nav-btn" id="btn-dette" onclick="goTab('dette')">💳 Dettes</button>
-  <span id="sync-status" style="display:none;font-size:11px;font-family:var(--fm);padding:4px 8px;color:var(--muted);"></span>
+  <span id="sync-status" style="display:none;font-size:11px;font-family:var(--fm);padding:4px 8px;color:var(--muted);"></span><span id="online-status" style="font-size:11px;font-family:var(--fm);padding:4px 8px;"></span>
   <label class="nav-import">📥<input type="file" id="import-file" accept=".json" style="display:none;" onchange="importData(event)"/></label>
 </div>
 
@@ -191,8 +194,21 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="kpi-card yellow"><div class="kpi-label">En Attente</div><div class="kpi-value" id="kpi-pending">0</div><div class="kpi-sub">À faire / En cours</div></div>
       <div class="kpi-card blue"><div class="kpi-label">Impayés</div><div class="kpi-value" id="kpi-unpaid">0 €</div><div class="kpi-sub">À encaisser</div></div>
       <div class="kpi-card purple"><div class="kpi-label">Épargne Cumulée</div><div class="kpi-value" id="kpi-epargne">0 €</div><div class="kpi-sub">Objectif appart Maroc</div></div>
+      <div class="kpi-card blue"><div class="kpi-label">Taux Horaire</div><div class="kpi-value" id="kpi-hourly">—</div><div class="kpi-sub">Bénéf / heure travaillée</div></div>
     </div>
-    <div class="card"><div class="card-title">🔔 Alertes</div><div id="alerts"></div></div>
+    <!-- OBJECTIF CA MENSUEL -->
+  <div class="card" style="border-left:3px solid var(--accent);">
+    <div class="card-title" style="justify-content:space-between;">
+      <span>🎯 Objectif CA mensuel</span>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="number" id="obj-ca-input" placeholder="Ex: 500" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-family:var(--fm);font-size:13px;outline:none;width:110px;" oninput="saveObjCA()"/>
+        <span style="font-size:12px;color:var(--muted);font-family:var(--fm);">€ / mois</span>
+      </div>
+    </div>
+    <div id="obj-ca-content"></div>
+  </div>
+
+  <div class="card"><div class="card-title">🔔 Alertes</div><div id="alerts"></div></div>
     <div class="card">
       <div class="card-title">⏱ Dernières réparations</div>
       <div class="table-wrap">
@@ -229,6 +245,7 @@ tr:hover td{background:rgba(255,255,255,0.02);}
       <div class="fg"><label>Autres frais (€)</label><input type="number" id="f-fees" placeholder="" min="0" step="0.01" oninput="updatePreview()"/></div>
       <div class="fg"><label>Prix client (€)</label><input type="number" id="f-price" placeholder="" min="0" step="0.01" oninput="updatePreview()"/></div>
       <div class="fg"><label>Client (optionnel)</label><input type="text" id="f-client" placeholder=""/></div>
+      <div class="fg"><label>Temps passé (min)</label><input type="number" id="f-time" placeholder="" min="0"/></div>
     </div>
     <div style="margin-top:14px;">
       <div class="fg">
@@ -389,11 +406,31 @@ tr:hover td{background:rgba(255,255,255,0.02);}
 </div>
 
 <!-- NOTES -->
+<div class="section" id="tab-clients">
+  <div style="font-size:18px;font-weight:800;margin-bottom:20px;">👥 Clients</div>
+
+  <!-- SEARCH -->
+  <div class="card" style="margin-bottom:16px;">
+    <input type="text" id="client-search" placeholder="Rechercher un client..." style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-family:var(--fh);font-size:14px;outline:none;width:100%;" oninput="renderClients()"/>
+  </div>
+
+  <div id="clients-list"></div>
+</div>
+
 <div class="section" id="tab-dette">
 
   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
     <div style="font-size:18px;font-weight:800;">💳 Mes Dettes</div>
     <button class="btn btn-primary" onclick="openAddDette()">+ Nouvelle dette</button>
+  </div>
+
+  <!-- RÉPARATIONS IMPAYÉES AUTO -->
+  <div class="card" style="border-left:3px solid var(--yellow);margin-bottom:20px;">
+    <div class="card-title" style="justify-content:space-between;">
+      <span>⏳ Réparations impayées</span>
+      <span id="dette-repa-total" style="font-family:var(--fm);font-size:14px;color:var(--yellow);">0 €</span>
+    </div>
+    <div id="dette-repa-list"></div>
   </div>
 
   <!-- MODAL AJOUT/EDIT DETTE -->
@@ -474,7 +511,7 @@ async function loadAllData(){
       _supa.from('epargne_config').select('*').eq('id',1).single(),
       _supa.from('notes').select('*').order('id', {ascending:false})
     ]);
-    if(r1.data) repairs = r1.data.map(function(r){ return {id:r.id,date:r.date,phone:r.phone,pieces:r.pieces||[],fees:r.fees||0,totalCost:r.total_cost||0,price:r.price||0,profit:r.profit||0,margin:r.margin||0,status:r.status||'todo',client:r.client||''}; });
+    if(r1.data) repairs = r1.data.map(function(r){ return {id:r.id,date:r.date,phone:r.phone,pieces:r.pieces||[],fees:r.fees||0,totalCost:r.total_cost||0,price:r.price||0,profit:r.profit||0,margin:r.margin||0,status:r.status||'todo',client:r.client||'',timeSpent:r.time_spent||0}; });
     if(r2.data) stock = r2.data.map(function(s){ return {id:s.id,name:s.name,qty:s.qty||0,price:s.price||0,alert:s.alert||1}; });
     if(r3.data) epList = r3.data.map(function(e){ return {id:e.id,date:e.date,amount:e.amount||0,source:e.source||''}; });
     if(r4.data) epCfg = {obj:r4.data.obj||0, men:r4.data.men||0, act:r4.data.act||0};
@@ -492,6 +529,8 @@ async function loadAllData(){
   if(epCfg.men) document.getElementById('e-men').value = epCfg.men;
   if(epCfg.act) document.getElementById('e-act').value = epCfg.act;
   refreshDash();
+// Init objCA
+if(objCA){ var inp=document.getElementById('obj-ca-input'); if(inp) inp.value=objCA; }
 // Init dashboard active glow
 document.getElementById('btn-dashboard').classList.add('active');
 }
@@ -521,6 +560,7 @@ function goTab(name){
   if(name==='epargne'){ renderEpList(); renderObjectifsList(); }
   if(name==='notes') renderNotes();
   if(name==='dette') renderDettes();
+  if(name==='clients') renderClients();
 }
 
 // ===== STATUS =====
@@ -584,16 +624,19 @@ function addRepair(){
   var fees=parseFloat(document.getElementById('f-fees').value)||0;
   var price=parseFloat(document.getElementById('f-price').value)||0;
   var client=document.getElementById('f-client').value.trim();
+  var timeSpent=parseInt(document.getElementById('f-time').value)||0;
   var pieces=getPieces();
   if(!date||!phone){ alert('Date et téléphone obligatoires khey !'); return; }
   if(pieces.length===0){ alert('Ajoute au moins une pièce !'); return; }
   var tc=pieces.reduce(function(s,p){ return s+p.cost; },0)+fees;
   var profit=price-tc; var margin=price>0?(profit/price*100):0;
   var newR = {id:Date.now(),date:date,phone:phone,pieces:pieces,fees:fees,totalCost:tc,price:price,profit:profit,margin:margin,status:status,client:client};
+  var newR = {id:Date.now(),date:date,phone:phone,pieces:pieces,fees:fees,totalCost:tc,price:price,profit:profit,margin:margin,status:status,client:client,timeSpent:timeSpent};
   repairs.unshift(newR);
   // Save to Supabase async
-  _supa.from('repairs').insert({id:newR.id,date:newR.date,phone:newR.phone,pieces:newR.pieces,fees:newR.fees,total_cost:newR.totalCost,price:newR.price,profit:newR.profit,margin:newR.margin,status:newR.status,client:newR.client}).then(function(res){ if(res.error){ showSyncStatus('❌ Erreur sauvegarde', 'var(--red)'); console.error(res.error); } else { showSyncStatus('✅ Sauvegardé', 'var(--green)'); setTimeout(function(){ showSyncStatus('',''); },2000); } });
-  document.getElementById('f-phone').value=''; document.getElementById('f-fees').value=''; document.getElementById('f-price').value=''; document.getElementById('f-client').value=''; document.getElementById('f-status').value='todo';
+  _supa.from('repairs').insert({id:newR.id,date:newR.date,phone:newR.phone,pieces:newR.pieces,fees:newR.fees,total_cost:newR.totalCost,price:newR.price,profit:newR.profit,margin:newR.margin,status:newR.status,client:newR.client,time_spent:newR.timeSpent||0}).then(function(res){ if(res.error){ showSyncStatus('❌ Erreur sauvegarde', 'var(--red)'); console.error(res.error); } else { showSyncStatus('✅ Sauvegardé', 'var(--green)'); setTimeout(function(){ showSyncStatus('',''); },2000); } });
+  document.getElementById('f-phone').value=''; document.getElementById('f-fees').value=''; document.getElementById('f-price').value=''; document.getElementById('f-client').value='';
+  document.getElementById('f-time').value=''; document.getElementById('f-status').value='todo';
   document.getElementById('pieces-box').innerHTML='<div class="piece-row"><div style="display:flex;flex-direction:column;gap:4px;"><select class="ptype" onchange="toggleCustomPiece(this);updatePreview()"><option value="">-- Type --</option><option>Écran</option><option>Batterie</option><option>Vitre arrière</option><option>Caméra</option><option>Haut-parleur</option><option>Connecteur de charge</option><option>Bouton power</option><option>Face ID</option><option>Micro</option><option>Nappe</option><option>Châssis</option><option value="custom">✏️ Autre (écrire)</option></select><input type="text" class="pcustom" placeholder="" style="display:none;background:var(--bg);border:1px solid var(--accent);border-radius:6px;padding:7px 9px;color:var(--text);font-family:var(--fh);font-size:12px;outline:none;" oninput="updatePreview()"/></div><input type="number" class="pcost" placeholder="" min="0" step="0.01" oninput="updatePreview()"/><button class="btn-rm" onclick="rmPiece(this)">✕</button></div>';
   document.getElementById('preview').textContent='Remplis les champs pour voir le calcul...';
   fillMonthFilter(); renderTable(); refreshDash();
@@ -620,22 +663,25 @@ function renderTable(){
   if(!data.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty"><div class="icon">🔧</div>Aucune réparation</div></td></tr>'; totDiv.style.display='none'; return; }
   tbody.innerHTML=data.map(function(r){
     var nl=sNext(r.status); var pchips=(r.pieces||[]).map(function(p){ return '<span class="chip">'+p.type+'</span>'; }).join('');
-    return '<tr><td style="font-family:var(--fm);font-size:11px;">'+r.date+'</td><td><strong>'+r.phone+'</strong></td><td>'+pchips+'</td><td style="color:var(--muted);font-size:11px;">'+(r.client||'—')+'</td><td style="font-family:var(--fm);">'+fmt(r.totalCost)+'</td><td style="font-family:var(--fm);font-weight:700;">'+fmt(r.price)+'</td><td class="'+(r.profit>=0?'pp':'pn')+'">'+fmt(r.profit)+'</td><td style="font-family:var(--fm);color:'+(r.margin>=50?'var(--green)':r.margin>=30?'var(--yellow)':'var(--red)')+';">'+fmtp(r.margin)+'</td><td>'+sBadge(r.status)+'</td><td style="white-space:nowrap;">'+(nl?'<button class="btn btn-success btn-sm" style="margin-right:4px;" onclick="advStatus('+r.id+')">'+sNextLabel(r.status)+'</button>':'')+'<button class="btn btn-danger btn-sm" onclick="delRepair('+r.id+')">🗑</button></td></tr>';
+    return '<tr><td style="font-family:var(--fm);font-size:11px;">'+r.date+'</td><td><strong>'+r.phone+'</strong></td><td>'+pchips+'</td><td style="color:var(--muted);font-size:11px;">'+(r.client||'—')+'</td><td style="font-family:var(--fm);">'+fmt(r.totalCost)+'</td><td style="font-family:var(--fm);font-weight:700;">'+fmt(r.price)+'</td><td class="'+(r.profit>=0?'pp':'pn')+'">'+fmt(r.profit)+'</td><td style="font-family:var(--fm);color:'+(r.margin>=50?'var(--green)':r.margin>=30?'var(--yellow)':'var(--red)')+';">'+fmtp(r.margin)+'</td><td>'+sBadge(r.status)+'</td><td style="white-space:nowrap;">'+(nl?'<button class="btn btn-success btn-sm" style="margin-right:4px;" onclick="advStatus('+r.id+')">'+sNextLabel(r.status)+'</button>':'')+'<button class="btn btn-sm" style="background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);margin-right:4px;" data-id="'+r.id+'" onclick="genFacture(this.dataset.id)">🧾</button><button class="btn btn-danger btn-sm" data-id="'+r.id+'" onclick="delRepair(this.getAttribute('+"'data-id'"+')+0)">🗑</button></td></tr>';
   }).join('');
   var ca=data.reduce(function(s,r){ return s+r.price; },0); var pr=data.reduce(function(s,r){ return s+r.profit; },0); var co=data.reduce(function(s,r){ return s+r.totalCost; },0); var mg=ca>0?(pr/ca*100):0;
   totDiv.style.display='block'; totDiv.innerHTML='<strong>TOTAUX</strong> &nbsp;|&nbsp; CA: <span style="color:var(--accent2)">'+fmt(ca)+'</span> &nbsp;|&nbsp; Coûts: <span style="color:var(--red)">'+fmt(co)+'</span> &nbsp;|&nbsp; Bénéfice: <span style="color:var(--green)">'+fmt(pr)+'</span> &nbsp;|&nbsp; Marge: <span style="color:var(--yellow)">'+fmtp(mg)+'</span>';
 }
 function advStatus(id){
-  repairs=repairs.map(function(r){ return r.id===id?Object.assign({},r,{status:sNext(r.status)}):r; });
+  repairs=repairs.map(function(r){ return String(r.id)===String(id)?Object.assign({},r,{status:sNext(r.status)}):r; });
   var updated = repairs.find(function(r){ return r.id===id; });
   if(updated) _supa.from('repairs').update({status:updated.status}).eq('id',id).then(function(res){ if(res.error) console.error(res.error); });
   renderTable(); refreshDash(); toast('✅ Statut avancé !');
 }
 function delRepair(id){
-  if(!confirm('Supprimer ?')) return;
-  repairs=repairs.filter(function(r){ return r.id!==id; });
-  _supa.from('repairs').delete().eq('id',id).then(function(res){ if(res.error) console.error(res.error); });
-  renderTable(); refreshDash(); toast('🗑 Supprimé');
+  var found = repairs.find(function(r){ return r.id == id; });
+  if(!found) return;
+  repairs = repairs.filter(function(r){ return r.id != id; });
+  _supa.from('repairs').delete().eq('id', found.id).then(function(res){
+    if(res.error) console.error(res.error);
+  });
+  renderTable(); refreshDash(); toast('🗑 Supprimé !');
 }
 
 // ===== DASHBOARD =====
@@ -668,6 +714,17 @@ function refreshDash(){
   if(pend>0) al.push('🔧 <strong>'+pend+' réparation(s)</strong> en attente ou en cours');
   if(unp>0) al.push('⚠️ <strong>'+fmt(unp)+'</strong> à encaisser');
   stock.filter(function(s){ return s.qty<=s.alert; }).forEach(function(s){ al.push('📦 Stock faible : <strong>'+s.name+'</strong> — '+s.qty+' unité(s)'); });
+  // Rappels retard
+  var rappels = getRappels();
+  rappels.forEach(function(r){ al.push(r); });
+  // Taux horaire
+  var hr = getHourlyRate();
+  if(hr > 0){
+    var hrEl = document.getElementById('kpi-hourly');
+    if(hrEl) hrEl.textContent = fmt(hr)+'/h';
+  }
+  // Refresh obj CA
+  refreshObjCA();
   document.getElementById('alerts').innerHTML=al.length?al.map(function(a){ return '<div style="padding:10px 13px;margin-bottom:7px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:8px;font-size:13px;">'+a+'</div>'; }).join(''):'<div style="color:var(--muted);font-size:13px;">Tout est clean le sang 👌</div>';
 }
 
@@ -1196,6 +1253,53 @@ function updateEpDispaly(){
 }
 
 
+
+// ===== RÉPARATIONS IMPAYÉES DANS DETTES =====
+function renderDetteRepa(){
+  var list = document.getElementById('dette-repa-list');
+  var totalEl = document.getElementById('dette-repa-total');
+  if(!list) return;
+
+  var unpaid = repairs.filter(function(r){ return r.status !== 'paid' && r.price > 0; });
+
+  if(!unpaid.length){
+    list.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Aucune réparation impayée 👌</div>';
+    if(totalEl) totalEl.textContent = '0 €';
+    return;
+  }
+
+  var total = unpaid.reduce(function(s,r){ return s+r.price; }, 0);
+  if(totalEl) totalEl.textContent = fmt(total);
+
+  var statusLabels = {todo:'📋 À faire', wip:'🔧 En cours', done:'✅ Terminé'};
+
+  list.innerHTML = '<div class="table-wrap"><table>' +
+    '<thead><tr><th>Date</th><th>Client</th><th>Téléphone</th><th>Pièces</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead>' +
+    '<tbody>' +
+    unpaid.sort(function(a,b){ return b.date.localeCompare(a.date); }).map(function(r){
+      return '<tr>' +
+        '<td style="font-family:var(--fm);font-size:11px;">'+r.date+'</td>' +
+        '<td style="font-size:12px;color:var(--muted);">'+(r.client||'—')+'</td>' +
+        '<td><strong>'+r.phone+'</strong></td>' +
+        '<td>'+(r.pieces||[]).map(function(p){ return '<span class="chip">'+p.type+'</span>'; }).join('')+'</td>' +
+        '<td style="font-family:var(--fm);font-weight:700;color:var(--yellow);">'+fmt(r.price)+'</td>' +
+        '<td><span class="sb s-'+(r.status||'todo')+'">'+(statusLabels[r.status]||r.status)+'</span></td>' +
+        '<td><button class="btn btn-success btn-sm" onclick="markPaidFromDette('+r.id+')">💰 Encaisser</button></td>' +
+      '</tr>';
+    }).join('') +
+    '</tbody></table></div>';
+}
+
+function markPaidFromDette(id){
+  repairs = repairs.map(function(r){ return String(r.id)===String(id) ? Object.assign({},r,{status:'paid'}) : r; });
+  localStorage.setItem('vp_r', JSON.stringify(repairs));
+  _supa.from('repairs').update({status:'paid'}).eq('id',id).then(function(res){ if(res.error) console.error(res.error); });
+  renderDetteRepa();
+  renderDettes();
+  refreshDash();
+  toast('💰 Réparation encaissée !');
+}
+
 // ===== DETTES =====
 var dettes = JSON.parse(localStorage.getItem('vp_dettes') || '[]');
 
@@ -1258,6 +1362,7 @@ function delDette(id){
 }
 
 function renderDettes(){
+  renderDetteRepa();
   var list = document.getElementById('dettes-list');
   var totalDiv = document.getElementById('dette-total');
   var totalContent = document.getElementById('dette-total-content');
@@ -1311,6 +1416,222 @@ function renderDettes(){
     '<div style="background:var(--surface2);padding:12px;border-radius:10px;"><div style="font-size:10px;color:var(--muted);font-family:var(--fm);">RESTANT</div><div style="font-size:18px;font-weight:800;color:var(--yellow);">'+fmt(totalRestant)+'</div></div>' +
   '</div>';
 }
+
+
+// ===== OBJECTIF CA MENSUEL =====
+var objCA = parseFloat(localStorage.getItem('vp_obj_ca'))||0;
+
+function saveObjCA(){
+  var val = parseFloat(document.getElementById('obj-ca-input').value)||0;
+  objCA = val;
+  localStorage.setItem('vp_obj_ca', val);
+  refreshObjCA();
+}
+
+function refreshObjCA(){
+  var el = document.getElementById('obj-ca-content');
+  var inp = document.getElementById('obj-ca-input');
+  if(!el) return;
+  if(inp && !inp.value && objCA) inp.value = objCA;
+
+  var ym = today().slice(0,7);
+  var mReps = repairs.filter(function(r){ return r.date.startsWith(ym); });
+  var mCA = mReps.reduce(function(s,r){ return s+r.price; },0);
+
+  if(!objCA){
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Fixe un objectif mensuel pour suivre ta progression 🎯</div>';
+    return;
+  }
+
+  var pct = Math.min(100, mCA/objCA*100);
+  var restant = Math.max(0, objCA - mCA);
+  var color = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+
+  el.innerHTML =
+    '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">' +
+      '<span style="font-family:var(--fm);"><strong style="color:'+color+'">'+fmt(mCA)+'</strong> / '+fmt(objCA)+'</span>' +
+      '<span style="font-family:var(--fm);color:'+color+'">'+pct.toFixed(1)+'%</span>' +
+    '</div>' +
+    '<div class="progress-wrap"><div class="progress-bar" style="width:'+pct+'%;background:'+color+';"></div></div>' +
+    (pct >= 100
+      ? '<div style="margin-top:8px;font-size:13px;color:var(--green);">🎉 Objectif atteint ce mois ! Wallah le sang 🔥</div>'
+      : '<div style="margin-top:8px;font-size:12px;color:var(--muted);">Il te reste <strong style="color:var(--text);">'+fmt(restant)+'</strong> à faire ce mois</div>'
+    );
+}
+
+// ===== RAPPELS RETARD =====
+function getRappels(){
+  var alerts = [];
+  var now = new Date();
+  repairs.forEach(function(r){
+    if(r.status === 'todo' || r.status === 'wip'){
+      var repDate = new Date(r.date);
+      var diffDays = Math.floor((now - repDate) / (1000*60*60*24));
+      if(diffDays >= 3){
+        alerts.push('⏰ <strong>'+r.phone+'</strong>'+(r.client?' ('+r.client+')':'')+' — en attente depuis <strong>'+diffDays+' jours</strong>');
+      }
+    }
+  });
+  return alerts;
+}
+
+// ===== TOP CLIENTS =====
+function renderClients(){
+  var search = (document.getElementById('client-search')||{}).value||'';
+  var list = document.getElementById('clients-list');
+  if(!list) return;
+
+  // Group by client name
+  var byClient = {};
+  repairs.forEach(function(r){
+    var name = (r.client||'').trim() || 'Client inconnu';
+    if(!byClient[name]) byClient[name] = {repairs:[], ca:0, profit:0, lastDate:''};
+    byClient[name].repairs.push(r);
+    byClient[name].ca += r.price||0;
+    byClient[name].profit += r.profit||0;
+    if(r.date > byClient[name].lastDate) byClient[name].lastDate = r.date;
+  });
+
+  var clients = Object.entries(byClient)
+    .sort(function(a,b){ return b[1].ca - a[1].ca; })
+    .filter(function(e){ return !search || e[0].toLowerCase().includes(search.toLowerCase()); });
+
+  if(!clients.length){
+    list.innerHTML = '<div class="empty"><div class="icon">👥</div>Aucun client pour l\'instant</div>';
+    return;
+  }
+
+  list.innerHTML = clients.map(function(entry, i){
+    var name = entry[0]; var data = entry[1];
+    var unpaid = data.repairs.filter(function(r){ return r.status!=='paid'; }).reduce(function(s,r){ return s+r.price; },0);
+    var timeTotal = data.repairs.reduce(function(s,r){ return s+(r.timeSpent||0); },0);
+    var hourlyRate = timeTotal > 0 ? (data.profit / (timeTotal/60)) : 0;
+
+    return '<div class="card" style="margin-bottom:14px;border-left:3px solid '+(i===0?'var(--yellow)':i===1?'var(--muted)':i===2?'#cd7f32':'var(--border)')+';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">' +
+        '<div>' +
+          '<div style="font-size:16px;font-weight:800;">'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':'👤')+' '+name+'</div>' +
+          '<div style="font-size:11px;color:var(--muted);font-family:var(--fm);">'+data.repairs.length+' réparation(s) — dernière: '+data.lastDate+'</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;">' +
+        '<div style="background:var(--surface2);padding:10px;border-radius:9px;"><div style="font-size:9px;color:var(--muted);font-family:var(--fm);">CA TOTAL</div><div style="font-size:16px;font-weight:800;font-family:var(--fm);color:var(--accent2);">'+fmt(data.ca)+'</div></div>' +
+        '<div style="background:var(--surface2);padding:10px;border-radius:9px;"><div style="font-size:9px;color:var(--muted);font-family:var(--fm);">BÉNÉFICE</div><div style="font-size:16px;font-weight:800;font-family:var(--fm);color:var(--green);">'+fmt(data.profit)+'</div></div>' +
+        (unpaid>0?'<div style="background:rgba(245,158,11,0.1);padding:10px;border-radius:9px;border:1px solid rgba(245,158,11,0.3);"><div style="font-size:9px;color:var(--muted);font-family:var(--fm);">IMPAYÉ</div><div style="font-size:16px;font-weight:800;font-family:var(--fm);color:var(--yellow);">'+fmt(unpaid)+'</div></div>':'') +
+        (timeTotal>0?'<div style="background:var(--surface2);padding:10px;border-radius:9px;"><div style="font-size:9px;color:var(--muted);font-family:var(--fm);">TAUX/H</div><div style="font-size:16px;font-weight:800;font-family:var(--fm);color:#a78bfa;">'+fmt(hourlyRate)+'/h</div></div>':'') +
+      '</div>' +
+      '<div style="margin-top:10px;">' +
+        '<div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--fm);">HISTORIQUE :</div>' +
+        data.repairs.slice().sort(function(a,b){ return b.date.localeCompare(a.date); }).slice(0,5).map(function(r){
+          return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;">' +
+            '<span>'+r.date+' — '+r.phone+' ('+(r.pieces||[]).map(function(p){ return p.type; }).join(', ')+')</span>' +
+            '<span style="font-family:var(--fm);color:'+(r.profit>=0?'var(--green)':'var(--red)')+'">'+fmt(r.profit)+'</span>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+// ===== COÛT HORAIRE GLOBAL =====
+function getHourlyRate(){
+  var totalProfit = repairs.reduce(function(s,r){ return s+r.profit; },0);
+  var totalTime = repairs.reduce(function(s,r){ return s+(r.timeSpent||0); },0);
+  return totalTime > 0 ? totalProfit/(totalTime/60) : 0;
+}
+
+
+
+// ===== FACTURE PDF =====
+function genFacture(id){
+  var r = repairs.find(function(x){ return String(x.id)===String(id) || x.id==id; });
+  if(!r){ toast('❌ Réparation introuvable'); return; }
+
+  var w = window.open('', '_blank');
+  var pieces = (r.pieces||[]).map(function(p){ return p.type+(p.cost?' ('+p.cost.toFixed(2)+'€)':''); }).join(', ');
+  var html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<title>Facture VicePhone — ${r.phone}</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:600px;margin:40px auto;color:#111;padding:20px;}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:40px;border-bottom:3px solid #7c3aed;padding-bottom:20px;}
+  .logo{font-size:28px;font-weight:900;color:#7c3aed;}
+  .logo span{color:#f472b6;}
+  .meta{text-align:right;font-size:13px;color:#666;}
+  h2{color:#7c3aed;font-size:18px;margin-bottom:20px;}
+  table{width:100%;border-collapse:collapse;margin-bottom:30px;}
+  th{background:#7c3aed;color:white;padding:10px 14px;text-align:left;font-size:13px;}
+  td{padding:10px 14px;border-bottom:1px solid #eee;font-size:13px;}
+  .total-row{background:#f9f9f9;font-weight:700;}
+  .total-row td{font-size:15px;padding:14px;}
+  .footer{text-align:center;color:#999;font-size:12px;margin-top:40px;border-top:1px solid #eee;padding-top:20px;}
+  .status{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;}
+  .paid{background:#d1fae5;color:#065f46;}
+  .unpaid{background:#fee2e2;color:#991b1b;}
+  @media print{button{display:none!important;}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div>
+    <div class="logo">Vice<span>Phone</span></div>
+    <div style="font-size:12px;color:#666;margin-top:4px;">Réparation de téléphones</div>
+  </div>
+  <div class="meta">
+    <div><strong>Facture N°</strong> VP-${String(r.id).slice(-6)}</div>
+    <div><strong>Date :</strong> ${r.date}</div>
+    <div style="margin-top:8px;"><span class="status ${r.status==='paid'?'paid':'unpaid'}">${r.status==='paid'?'✅ Payée':'⏳ En attente'}</span></div>
+  </div>
+</div>
+
+${r.client?'<div style="margin-bottom:24px;"><strong>Client :</strong> '+r.client+'</div>':''}
+
+<h2>Détail de la réparation</h2>
+<table>
+  <thead><tr><th>Appareil</th><th>Pièces réparées</th><th>Coût pièces</th><th>Autres frais</th><th>Total</th></tr></thead>
+  <tbody>
+    <tr><td><strong>${r.phone}</strong></td><td>${pieces}</td><td>${(r.totalCost-(r.fees||0)).toFixed(2)} €</td><td>${(r.fees||0).toFixed(2)} €</td><td><strong>${r.price.toFixed(2)} €</strong></td></tr>
+  </tbody>
+</table>
+
+<table>
+  <tr class="total-row"><td colspan="4" style="text-align:right;">TOTAL À PAYER</td><td style="color:#7c3aed;font-size:18px;">${r.price.toFixed(2)} €</td></tr>
+</table>
+
+<div style="text-align:center;margin:30px 0;">
+  <button onclick="window.print()" style="background:#7c3aed;color:white;border:none;padding:12px 32px;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;">🖨 Imprimer / Sauvegarder PDF</button>
+</div>
+
+<div class="footer">
+  <strong>VicePhone</strong> — Merci de votre confiance 🙏<br/>
+  Pour toute question, contactez-nous.
+</div>
+</body>
+</html>`;
+
+  w.document.write(html);
+  w.document.close();
+}
+
+// ===== ONLINE / OFFLINE =====
+function updateOnlineStatus(){
+  var el = document.getElementById('online-status');
+  if(!el) return;
+  if(navigator.onLine){
+    el.textContent = '🟢 En ligne';
+    el.style.color = 'var(--green)';
+  } else {
+    el.textContent = '🔴 Hors ligne';
+    el.style.color = 'var(--red)';
+    toast('⚠️ Mode hors ligne — les données ne se sync pas batard !');
+  }
+}
+window.addEventListener('online', function(){ updateOnlineStatus(); loadAllData(); toast('✅ Reconnecté ! Sync en cours...'); });
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
 
 // ===== PARTICLES BG =====
 (function(){
@@ -1372,6 +1693,34 @@ function renderDettes(){
 })();
 
 
+</script>
+
+<script>
+// ===== SERVICE WORKER OFFLINE =====
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    // Inline SW as blob
+    var swCode = `
+self.addEventListener('install', function(e){
+  e.waitUntil(
+    caches.open('vicephone-v1').then(function(cache){
+      return cache.addAll(['/VicePhone-/', '/VicePhone-/index.html']);
+    }).catch(function(){})
+  );
+});
+self.addEventListener('fetch', function(e){
+  e.respondWith(
+    fetch(e.request).catch(function(){
+      return caches.match(e.request).then(function(r){ return r || new Response('Hors ligne'); });
+    })
+  );
+});
+`;
+    var blob = new Blob([swCode], {type:'application/javascript'});
+    var url = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url).catch(function(){});
+  });
+}
 </script>
 </body>
 </html>
