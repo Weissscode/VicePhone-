@@ -678,7 +678,7 @@ function renderTable(){
   if(!data.length){ tbody.innerHTML='<tr><td colspan="10"><div class="empty"><div class="icon">🔧</div>Aucune réparation</div></td></tr>'; totDiv.style.display='none'; return; }
   tbody.innerHTML=data.map(function(r){
     var nl=sNext(r.status); var pchips=(r.pieces||[]).map(function(p){ return '<span class="chip">'+p.type+'</span>'; }).join('');
-    return '<tr><td style="font-family:var(--fm);font-size:11px;">'+r.date+'</td><td><strong>'+r.phone+'</strong></td><td>'+pchips+'</td><td style="color:var(--muted);font-size:11px;">'+(r.client||'—')+'</td><td style="font-family:var(--fm);">'+fmt(r.totalCost)+'</td><td style="font-family:var(--fm);font-weight:700;">'+fmt(r.price)+'</td><td class="'+(r.profit>=0?'pp':'pn')+'">'+fmt(r.profit)+'</td><td style="font-family:var(--fm);color:'+(r.margin>=50?'var(--green)':r.margin>=30?'var(--yellow)':'var(--red)')+';">'+fmtp(r.margin)+'</td><td>'+sBadge(r.status)+'</td><td style="white-space:nowrap;">'+(nl?'<button class="btn btn-success btn-sm" style="margin-right:4px;" onclick="advStatus('+r.id+')">'+sNextLabel(r.status)+'</button>':'')+'<button class="btn btn-sm" style="background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);margin-right:4px;" data-id="'+r.id+'" onclick="genFacture(this.dataset.id)">🧾</button><button class="btn btn-danger btn-sm" data-id="'+r.id+'" onclick="delRepair(this.getAttribute('+"'data-id'"+')+0)">🗑</button></td></tr>';
+    return '<tr><td style="font-family:var(--fm);font-size:11px;">'+r.date+'</td><td><strong>'+r.phone+'</strong></td><td>'+pchips+'</td><td style="color:var(--muted);font-size:11px;">'+(r.client||'—')+'</td><td style="font-family:var(--fm);">'+fmt(r.totalCost)+'</td><td style="font-family:var(--fm);font-weight:700;">'+fmt(r.price)+'</td><td class="'+(r.profit>=0?'pp':'pn')+'">'+fmt(r.profit)+'</td><td style="font-family:var(--fm);color:'+(r.margin>=50?'var(--green)':r.margin>=30?'var(--yellow)':'var(--red)')+';">'+fmtp(r.margin)+'</td><td>'+sBadge(r.status)+'</td><td style="white-space:nowrap;">'+(nl?'<button class="btn btn-success btn-sm" style="margin-right:4px;" onclick="advStatus('+r.id+')">'+sNextLabel(r.status)+'</button>':'')+'<button class="btn btn-sm" style="background:rgba(124,58,237,0.15);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);margin-right:4px;" data-id="'+r.id+'" onclick="genFacture(this.dataset.id)">🧾</button><button class="btn btn-danger btn-sm" data-id="'+r.id+'" onclick="delRepair(this.dataset.id)">🗑</button></td></tr>';
   }).join('');
   var ca=data.reduce(function(s,r){ return s+r.price; },0); var pr=data.reduce(function(s,r){ return s+r.profit; },0); var co=data.reduce(function(s,r){ return s+r.totalCost; },0); var mg=ca>0?(pr/ca*100):0;
   totDiv.style.display='block'; totDiv.innerHTML='<strong>TOTAUX</strong> &nbsp;|&nbsp; CA: <span style="color:var(--accent2)">'+fmt(ca)+'</span> &nbsp;|&nbsp; Coûts: <span style="color:var(--red)">'+fmt(co)+'</span> &nbsp;|&nbsp; Bénéfice: <span style="color:var(--green)">'+fmt(pr)+'</span> &nbsp;|&nbsp; Marge: <span style="color:var(--yellow)">'+fmtp(mg)+'</span>';
@@ -690,11 +690,12 @@ function advStatus(id){
   renderTable(); refreshDash(); toast('✅ Statut avancé !');
 }
 function delRepair(id){
-  var found = repairs.find(function(r){ return r.id == id; });
-  if(!found) return;
-  repairs = repairs.filter(function(r){ return r.id != id; });
+  var found = repairs.find(function(r){ return String(r.id)===String(id) || r.id==id; });
+  if(!found){ toast('Répa introuvable'); return; }
+  repairs = repairs.filter(function(r){ return String(r.id)!==String(id); });
   _supa.from('repairs').delete().eq('id', found.id).then(function(res){
-    if(res.error) console.error(res.error);
+    if(res.error){ toast('Erreur suppression'); console.error(res.error); }
+    else { toast('🗑 Supprimé !'); }
   });
   renderTable(); refreshDash(); toast('🗑 Supprimé !');
 }
