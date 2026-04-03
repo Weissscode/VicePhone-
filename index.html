@@ -873,8 +873,8 @@ function renderObjectifsList(){
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">' +
         '<div style="font-size:17px;font-weight:800;">'+o.icon+' '+o.name+'</div>' +
         '<div style="display:flex;gap:6px;">' +
-          '<button class="btn btn-sm" style="background:rgba(6,182,212,0.15);color:var(--accent2);border:1px solid rgba(6,182,212,0.3);" onclick="editObjectif('+JSON.stringify(o.id)+')">✏️</button>' +
-          '<button class="btn btn-danger btn-sm" onclick="delObjectif('+JSON.stringify(o.id)+')">🗑</button>' +
+          '<button class="btn btn-sm" style="background:rgba(6,182,212,0.15);color:var(--accent2);border:1px solid rgba(6,182,212,0.3);" data-id="'+o.id+'" onclick="editObjectif(this.dataset.id)">✏️</button>' +
+          '<button class="btn btn-danger btn-sm" data-id="'+o.id+'" onclick="delObjectif(this.dataset.id)">🗑</button>' +
         '</div>' +
       '</div>' +
       '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:6px;">' +
@@ -908,7 +908,7 @@ function closeObjectifModal(){
 }
 
 function editObjectif(id){
-  var o = objectifs.find(function(x){ return x.id===id; });
+  var o = objectifs.find(function(x){ return String(x.id)===String(id) || x.id==id; });
   if(!o) return;
   document.getElementById('obj-edit-id').value = id;
   document.getElementById('obj-name').value = o.name||'';
@@ -940,7 +940,7 @@ function saveObjectif(){
 }
 
 function delObjectif(id){
-  objectifs = objectifs.filter(function(o){ return String(o.id)!==String(id); });
+  objectifs = objectifs.filter(function(o){ return String(o.id)!==String(id) && o.id!=id; });
   localStorage.setItem('vp_obj', JSON.stringify(objectifs));
   renderObjectifsList();
   toast('🗑 Objectif supprimé');
